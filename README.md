@@ -117,14 +117,13 @@ Update()                            FixedUpdate()
 - `Orientation Lerp Speed`: Blend rate used to realign the board to its projected forward direction.
 - `Lean Angle`: Maximum visual lean applied to the board mesh.
 - `Lean Response`: Smoothing factor for how quickly the lean reaches the target angle.
+- `Tail Pivot Local`: Local-space offset used when yawing so the board rotates around the rear truck instead of its centre.
 
 ### Speed And Push
 - `Push Impulse`: Velocity change applied when a push is consumed.
 - `Push Cooldown`: Minimum time between pushes to avoid spam.
 - `Max Push Speed`: Speed threshold that reduces push strength as you approach it.
 - `Max Roll Speed`: Hard planar speed cap enforced after forces are applied.
-- `Pump Acceleration`: Additional acceleration gained when the rider pumps forward.
-- `Braking Drag`: Deceleration applied when the rider pulls back on the stick.
 
 ### Friction And Grip
 - `Rolling Resistance`: Baseline slowdown applied whenever the board is grounded.

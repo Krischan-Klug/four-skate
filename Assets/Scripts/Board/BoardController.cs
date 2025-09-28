@@ -26,6 +26,7 @@ public sealed class BoardController : MonoBehaviour {
     [SerializeField] float orientationLerpSpeed = 10f;
     [SerializeField] float leanAngle = 9f;
     [SerializeField] float leanResponse = 12f;
+    [SerializeField] Vector3 tailPivotLocal = new Vector3(0f, 0f, -0.45f);
 
     [Header("Speed & Push")]
     [SerializeField] float pushImpulse = 3.75f;
@@ -208,10 +209,20 @@ public sealed class BoardController : MonoBehaviour {
         float steer = Mathf.Clamp(moveInput.x, -1f, 1f);
 
         if (hasGroundContact) {
-            Quaternion desiredRotation = boardBody.rotation;
+            Quaternion currentRotation = boardBody.rotation;
+            Quaternion desiredRotation = currentRotation;
+            Quaternion yawDelta = Quaternion.identity;
+
             if (Mathf.Abs(steer) > 0.001f) {
-                Quaternion yaw = Quaternion.AngleAxis(steer * turningRate * dt, groundNormal);
-                desiredRotation = yaw * desiredRotation;
+                yawDelta = Quaternion.AngleAxis(steer * turningRate * dt, groundNormal);
+                desiredRotation = yawDelta * desiredRotation;
+
+                if (tailPivotLocal.sqrMagnitude > 1e-6f) {
+                    Vector3 pivotWorld = boardBody.transform.TransformPoint(tailPivotLocal);
+                    Vector3 offset = boardBody.position - pivotWorld;
+                    Vector3 rotatedOffset = yawDelta * offset;
+                    boardBody.MovePosition(pivotWorld + rotatedOffset);
+                }
             }
 
             Vector3 forward = Vector3.ProjectOnPlane(desiredRotation * Vector3.forward, groundNormal);
@@ -240,7 +251,6 @@ public sealed class BoardController : MonoBehaviour {
                 boardBody.AddTorque(Vector3.up * steer * airTurningRate, ForceMode.Acceleration);
         }
     }
-
     void ApplyPropulsion() {
         Vector3 forward = Vector3.ProjectOnPlane(boardBody.transform.forward, groundNormal);
         if (forward.sqrMagnitude < 1e-4f)
@@ -268,16 +278,6 @@ public sealed class BoardController : MonoBehaviour {
             pushRequest = false;
         } else if (!hasGroundContact) {
             pushRequest = false;
-        }
-
-        float pump = Mathf.Clamp(moveInput.y, -1f, 1f);
-        if (hasGroundContact && Mathf.Abs(pump) > 0.1f) {
-            if (pump > 0f) {
-                boardBody.AddForce(forward * pump * pumpAcceleration, ForceMode.Acceleration);
-            } else if (planarVelocity.sqrMagnitude > 0.001f) {
-                Vector3 brakingForce = -planarVelocity.normalized * Mathf.Abs(pump) * brakingDrag;
-                boardBody.AddForce(brakingForce, ForceMode.Acceleration);
-            }
         }
 
         if (planarSpeed > maxRollSpeed && planarVelocity.sqrMagnitude > 0.001f) {
