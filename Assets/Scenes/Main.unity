@@ -772,6 +772,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoardController
   flickSettings: {fileID: 11400000, guid: b728b3394f5915649a817f0d1d1e8d01, type: 2}
   input: {fileID: 1362582598}
+  boardBody: {fileID: 1362582600}
+  boardVisualRoot: {fileID: 1362582601}
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  groundProbeRadius: 0.25
+  groundProbeDistance: 0.6
+  groundSnapStrength: 12
+  groundStickyForce: 30
+  orientationLerpSpeed: 10
+  gravityMultiplier: 1.15
+  rideHeight: 1.1
+  groundedBuffer: 0.08
+  pushImpulse: 3.75
+  pushCooldown: 0.45
+  maxPushSpeed: 6.5
+  maxRollSpeed: 14
+  turningRate: 140
+  airTurningRate: 60
+  leanAngle: 9
+  leanResponse: 12
+  pumpAcceleration: 24
+  brakingDrag: 6
+  rollingResistance: 1.1
+  lateralGrip: 35
+  airDrag: 0.2
+  minPopSpeed: 1.5
 --- !u!114 &1362582598
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -901,7 +928,7 @@ Transform:
   m_GameObject: {fileID: 1362582596}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.5, z: 0}
+  m_LocalPosition: {x: 0, y: 5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
