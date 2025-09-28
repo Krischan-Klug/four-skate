@@ -33,6 +33,7 @@ public sealed class BoardController : MonoBehaviour {
     [SerializeField] float pushCooldown = 0.5f;
     [SerializeField] float maxPushSpeed = 9f;
     [SerializeField] float maxRollSpeed = 18f;
+    [SerializeField] float brakingStrength = 5f;
 
     [Header("Friction & Grip")]
     [SerializeField] float rollingResistance = 0.2f;
@@ -278,6 +279,11 @@ public sealed class BoardController : MonoBehaviour {
             pushRequest = false;
         }
 
+        float pump = Mathf.Clamp(moveInput.y, -1f, 1f);
+        if (hasGroundContact && pump < -0.1f && planarVelocity.sqrMagnitude > 0.001f) {
+            Vector3 brakingForce = -planarVelocity.normalized * Mathf.Abs(pump) * brakingStrength;
+            boardBody.AddForce(brakingForce, ForceMode.Acceleration);
+        }
         if (planarSpeed > maxRollSpeed && planarVelocity.sqrMagnitude > 0.001f) {
             Vector3 cappedPlanar = planarVelocity.normalized * maxRollSpeed;
             boardBody.linearVelocity = cappedPlanar + Vector3.Project(boardBody.linearVelocity, groundNormal);
@@ -318,4 +324,5 @@ public sealed class BoardController : MonoBehaviour {
         pushRequest = false;
     }
 }
+
 

@@ -232,8 +232,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -238, y: -198}
-  m_SizeDelta: {x: 400, y: 300}
+  m_AnchoredPosition: {x: -218, y: -260}
+  m_SizeDelta: {x: 400, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &249501610
 MonoBehaviour:
@@ -542,8 +542,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 55.2, y: -126}
-  m_SizeDelta: {x: 360, y: 90}
+  m_AnchoredPosition: {x: 55.2, y: -136}
+  m_SizeDelta: {x: 350, y: 220}
   m_Pivot: {x: 0.1, y: 0.1}
 --- !u!114 &918559308
 MonoBehaviour:
@@ -567,9 +567,9 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 150
+    m_FontSize: 20
     m_FontStyle: 0
-    m_BestFit: 1
+    m_BestFit: 0
     m_MinSize: 0
     m_MaxSize: 300
     m_Alignment: 0
@@ -793,6 +793,7 @@ MonoBehaviour:
   pushCooldown: 0.5
   maxPushSpeed: 9
   maxRollSpeed: 18
+  brakingStrength: 5
   rollingResistance: 0.2
   lateralGrip: 35
   gravityMultiplier: 1.15

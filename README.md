@@ -124,6 +124,7 @@ Update()                            FixedUpdate()
 - `Push Cooldown`: Minimum delay between pushes so the cadence feels human.
 - `Max Push Speed`: Target cruising speed (~9 m/s) approached as pushes lose strength.
 - `Max Roll Speed`: Hard planar cap (~18 m/s) that still leaves room for downhill acceleration.
+- `Braking Strength`: Scalar applied to backward input to slow the board.
 
 ### Friction And Grip
 - `Rolling Resistance`: Baseline slowdown while grounded (lower values mean longer coasts).
