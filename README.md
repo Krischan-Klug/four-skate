@@ -1,116 +1,161 @@
-﻿# Four Skate Prototype
+# Four Skate
 
-This repository contains a Unity prototype for a grounded skateboarding experience. The focus of the current iteration is the `BoardController`, a physics-driven controller that keeps the board hovering just above the ground, captures rider input, and forwards recognised tricks to the rest of the gameplay stack.
+Four Skate is a skate-inspired Unity prototype focused on expressive board control, responsive physics, and a modular gameplay stack. This milestone builds a solid ride feel while keeping the code ready for future systems such as tricks, animation, scoring, and replays.
 
-## Quick Start
+## Vision And Pillars
+- **Authentic Flow**: Maintain a constant sense of motion by blending pushes, pumps, and carving without hard resets.
+- **Modular Systems**: Keep input, physics, tricks, and presentation isolated so each can evolve independently.
+- **Readable Code**: Prefer descriptive state, events, and documentation so new contributors can extend the project quickly.
 
-1. Add the `BoardController` component to your board root object.
-2. Assign the required references:
-   - `Board Body`: the board's `Rigidbody` (interpolation enabled, gravity on).
-   - `Board Visual Root`: optional transform used for lean visuals (defaults to the component transform).
-   - `Input`: the scene's `UnityInputAdapter` instance.
-   - `Flick Settings`: a `FlickItSettings` asset for trick recognition.
-3. Ensure colliders that should register as ground are on the layers included in `Ground Layers`.
-4. Enter Play Mode, hold the left stick to steer, and press the south face button to push.
+## Feature Snapshot (Pre-Alpha)
+- Hover based skateboard physics controller with tunable suspension and friction.
+- Gamepad friendly control scheme using the Unity Input System.
+- Trick gesture recognition pipeline (FlickIt) already wired in for future trick logic.
+- Debug friendly telemetry exposed as properties such as `Speed`, `GroundNormal`, and `AirTime`.
 
-## Input Mapping
+## Controls
+| Action | Input (Input System) | Notes |
+| --- | --- | --- |
+| Steer / Pump | `MoveLS` (left stick) | X controls carve, Y pumps forward or brakes |
+| Trick Flicks | `TrickRS` (right stick) | Passed directly to the FlickIt recogniser |
+| Push | `Push` (south face button) | Queued and executed on the next grounded physics step |
+| Left Grab | `GrabLeft` (LT) | Stored on the last trick event |
+| Right Grab | `GrabRight` (RT) | Stored on the last trick event |
 
-- **Left Stick** (`MoveLS`): steering (X) and pumping/braking (Y).
-- **Right Stick** (`TrickRS`): fed into the flick recogniser (currently only used for logging).
-- **South Button** (`Push`): queues a ground push.
-- **Left / Right Triggers** (`GrabLeft`, `GrabRight`): stored on the last recognised trick event.
+`UnityInputAdapter` owns the InputActionProperty references so bindings can change without touching gameplay code.
 
-These inputs are exposed through `UnityInputAdapter`, which simply wraps `InputActionProperty` bindings so you can remap controls in the Unity Input System.
+## Project Layout
+- `Assets/Scripts/Board/` - Board physics, state, and future board gameplay.
+- `Assets/Scripts/Input/` - Input wrappers such as `UnityInputAdapter`.
+- `Assets/Scripts/Tricks/` - FlickIt settings and recognition logic.
+- `Assets/Scenes/` - Prototype scenes and test setups.
+- `README.md` - This document. Keep it in sync with feature work.
 
-## BoardController Lifecycle
+Check `ProjectSettings/ProjectVersion.txt` for the Unity version before opening the project.
 
-`Update()` (per rendered frame):
-- Caches left-stick input (`MoveInput`).
-- Ticks the `FlickItRecognizer`, firing `TrickPerformed` when a gesture resolves.
-- Detects the south button press and queues a push for the next physics update.
+## System Overview
+### Input Layer
+- `UnityInputAdapter` exposes strongly typed accessors (`MoveLS`, `TrickRS`, `Push`, `GrabLeft`, `GrabRight`).
+- Gameplay reads through the adapter interface to keep controller mappings decoupled from logic.
 
-`FixedUpdate()` (per physics step):
-1. `UpdateGroundContact` — Spherecasts to locate the closest ground surface and maintains hover state data (surface normal, distance, grounded flag).
-2. `ApplyGravity` — Adds extra gravity in air and applies suspension spring-damper forces while grounded.
-3. `ApplySteering` — Rotates the rigidbody towards the desired heading and damps lateral slip.
-4. `ApplyPropulsion` — Applies push impulses, pumping acceleration, and braking drag.
-5. `ApplyFriction` — Applies rolling resistance when in contact with the ground.
-6. `UpdateLeanVisual` — Tilts the visual mesh to match steering input.
-7. `UpdateKinematicState` — Updates cached velocity, speed, and airtime values for external systems.
+### Movement And Physics
+- `BoardController` owns the rigidbody, tracks ground contact, applies forces, and caches state for other systems.
+- `boardVisualRoot` lets us tilt or swap presentation meshes without affecting the physics body.
 
-### Public Surface
+### Trick Recognition (Work In Progress)
+- `FlickItRecognizer` analyses right stick motion and emits `TrickEvent`.
+- `BoardController` forwards those events; future systems can interpret, animate, and score them.
 
-- **Properties**: `MoveInput`, `Velocity`, `GroundNormal`, `Speed`, `AirTime`, `IsGrounded`, `PopReady`, etc. expose real-time state without re-querying the rigidbody.
-- **Events**: `TrickPerformed` delivers a `TrickEvent` populated with recogniser ID, grab status, and whether the gesture was a nollie.
-- **Methods**: `ClearPushQueue()` should be called by animation/footstep logic once a push has been consumed to prevent stale input.
+## BoardController Architecture
+### Responsibilities
+- Convert rider input into grounded locomotion and aerial control.
+- Maintain a configurable hover offset via a spring and damper.
+- Expose rich state (`Velocity`, `GroundNormal`, `PopReady`, etc.) for cameras, UI, and gameplay.
+- Dispatch trick events detected by the recogniser.
 
-## Tunable Parameters
+### Dependencies
+- `Rigidbody boardBody` - Physics authority (interpolation enabled, gravity on).
+- `UnityInputAdapter input` - Source for rider input.
+- `FlickItSettings` and `FlickItRecognizer` - Optional trick recognition.
 
-Serialized fields are grouped by category to keep the inspector organised:
+### Update Flow
+```
+Update()                            FixedUpdate()
+  - Cache MoveLS and queue push      - UpdateGroundContact()
+  - Tick FlickIt recogniser          - ApplyGravity()
+  - Broadcast trick events           - ApplySteering(dt)
+                                      - ApplyPropulsion()
+                                      - ApplyFriction()
+                                      - UpdateLeanVisual(dt)
+                                      - UpdateKinematicState()
+```
+`Update()` never mutates the rigidbody; it only caches input and handles recogniser output. `FixedUpdate()` owns every physics side effect so the simulation stays deterministic.
 
-### Input & Recognition
-- `Flick Settings`, `Input` — references for trick recognition and player input.
+### Data Flow Between Scripts
+1. `UnityInputAdapter` reads device input.
+2. `BoardController.Update()` copies left stick and push values and ticks the recogniser with right stick motion.
+3. When a trick resolves, `BoardController` caches `TrickEvent` and fires `TrickPerformed`.
+4. `FixedUpdate()` consumes cached input, applies forces, and refreshes public properties for interested systems (camera, UI, trick logic).
+
+### Subsystems Inside BoardController
+- **Ground Detection**: `UpdateGroundContact` sphere casts below the centre of mass, captures surface normal and distance, sets `hasGroundContact`, `isGrounded`, and resets `airTime` when needed.
+- **Suspension**: `ApplyGravity` adds extra gravity in air and, when grounded, applies spring force `(rideHeight - groundDistance) * suspensionStrength` plus damping along the normal (`normalVelocity * suspensionDamping`).
+- **Steering And Lean**: `ApplySteering` yaws the rigidbody around the ground normal, aligns forward direction, damps lateral slip, and `UpdateLeanVisual` tilts the presentation mesh.
+- **Propulsion**: `ApplyPropulsion` processes push requests (respecting cooldown, speed caps, and grounded tolerance), adds pump acceleration, and applies braking drag when the stick is pulled back.
+- **Friction And Drag**: `ApplyFriction` adds rolling resistance on contact; `ApplyGravity` handles air drag when not grounded.
+- **State Caching**: `UpdateKinematicState` caches velocity, planar speed, and airtime so external code avoids repeated projections.
+
+### Extensibility Hooks
+- **Animation**: Trigger a push animation when `PushQueued` is true, then call `ClearPushQueue()` once the animation consumes the push.
+- **Tricks**: Subscribe to `TrickPerformed` and extend `TrickEvent` with spin or flip data as recognition improves.
+- **Camera And FX**: Align cameras or particle effects using `GroundNormal` and `Velocity`.
+- **Surface Variations**: Adjust `Ground Layers` or suspension settings at runtime for bowls, rails, or special zones.
+
+## Serialized Tuning Reference
+### Input And Recognition
+- `Flick Settings`: Reference to the FlickItSettings asset that defines gesture recognition behaviour.
+- `Input`: UnityInputAdapter instance that exposes Input System actions to gameplay code.
 
 ### References
-- `Board Body`, `Board Visual Root` — physics and visual anchors for the board.
+- `Board Body`: Rigidbody that receives all physics forces and motion.
+- `Board Visual Root`: Transform for the visual mesh or character that leans independently of the collider.
 
 ### Ground Detection
-- `Ground Layers` — mask for valid riding surfaces.
-- `Ground Probe Radius` / `Distance` — size and length of the grounding spherecast.
+- `Ground Layers`: LayerMask listing every collider that counts as skateable surface.
+- `Ground Probe Radius`: Radius of the grounding sphere cast; larger values increase stability on uneven surfaces.
+- `Ground Probe Distance`: Maximum distance checked below the board; adjust to match terrain scale.
 
 ### Suspension
-- `Ride Height` — desired board height above the ground (defaults to **1.1**, as tuned during prototyping).
-- `Grounded Buffer` — tolerance above the ride height that still counts as grounded (important for push availability).
-- `Suspension Strength` — spring force pulling the board towards the ride height.
-- `Suspension Damping` — damping applied along the ground normal when grounded.
+- `Ride Height`: Target hover offset from the detected ground (prototype tuned to 1.1).
+- `Grounded Buffer`: Extra tolerance above ride height that still counts as grounded for pushes and pops.
+- `Suspension Strength`: Spring force pulling the board back toward the ride height.
+- `Suspension Damping`: Counter force along the ground normal that prevents oscillation.
 
-### Steering & Lean
-- `Turning Rate`, `Air Turning Rate` — yaw responsiveness on ground vs. in air.
-- `Orientation Lerp Speed` — how quickly the board re-aligns to its projected forward vector.
-- `Lean Angle`, `Lean Response` — visual lean amount and smoothing for the mesh.
+### Steering And Lean
+- `Turning Rate`: Grounded yaw speed when carving.
+- `Air Turning Rate`: Torque applied while airborne for correcting board orientation.
+- `Orientation Lerp Speed`: Blend rate used to realign the board to its projected forward direction.
+- `Lean Angle`: Maximum visual lean applied to the board mesh.
+- `Lean Response`: Smoothing factor for how quickly the lean reaches the target angle.
 
-### Speed & Push
-- `Push Impulse`, `Push Cooldown` — magnitude and minimum delay between pushes.
-- `Max Push Speed`, `Max Roll Speed` — soft and hard speed caps.
-- `Pump Acceleration`, `Braking Drag` — forward acceleration from pumping and braking resistance when pulling back on the stick.
+### Speed And Push
+- `Push Impulse`: Velocity change applied when a push is consumed.
+- `Push Cooldown`: Minimum time between pushes to avoid spam.
+- `Max Push Speed`: Speed threshold that reduces push strength as you approach it.
+- `Max Roll Speed`: Hard planar speed cap enforced after forces are applied.
+- `Pump Acceleration`: Additional acceleration gained when the rider pumps forward.
+- `Braking Drag`: Deceleration applied when the rider pulls back on the stick.
 
-### Friction & Grip
-- `Rolling Resistance` — continual slowdown while grounded.
-- `Lateral Grip` — strength of sideways velocity damping.
+### Friction And Grip
+- `Rolling Resistance`: Baseline slowdown applied whenever the board is grounded.
+- `Lateral Grip`: Strength of the force that cancels sideways drift while carving.
 
-### Gravity & Air
-- `Gravity Multiplier` — extra downward acceleration applied in air.
-- `Air Drag` — velocity-based damping while airborne.
+### Gravity And Air
+- `Gravity Multiplier`: Scales world gravity to make airborne phases heavier or lighter.
+- `Air Drag`: Damping applied to velocity while the board is off the ground.
 
 ### Aerial Requirements
-- `Min Pop Speed` — minimum planar speed required for `PopReady` to return true.
+- `Min Pop Speed`: Minimum planar speed required before the controller reports `PopReady`.
 
-## Extending the Controller
-
-- **Animations**: Use `PushQueued` to trigger a push animation, then call `ClearPushQueue()` when the foot makes contact.
-- **Tricks**: The controller already captures grabs and nollie state. Extend `TrickEvent` as needed to include spin/flip data once the recogniser provides it.
-- **Characters**: Swap `boardVisualRoot` to a rigged character or board mesh to keep physics (collider) and presentation separated.
-- **Surfaces**: Adjust `Ground Layers` and probe sizing to support coping, rails, or off-angle surfaces.
-
-## Code Style Notes
-
-- Physics work is isolated in `FixedUpdate` to keep deterministic behaviour.
-- All frequently accessed state is cached (speed, velocity, time in air) to avoid repeated projection calculations elsewhere.
-- The controller exposes read-only properties instead of public fields to preserve encapsulation and make future refactors safer.
+## Development Guidelines
+- Keep new features modular; prefer companion components or event subscribers over expanding `BoardController` with unrelated logic.
+- Document new parameters and update this README when behaviour changes.
+- Tune physics in dedicated test scenes and preserve presets for different surfaces.
 
 ## Troubleshooting
-
 | Symptom | Likely Cause | Recommended Adjustment |
 | --- | --- | --- |
-| Pushes rarely trigger | `Grounded Buffer` too small or ride height too high | Increase buffer or lower ride height slightly |
-| Board feels floaty | `Suspension Strength` too low | Increase strength and damping proportionally |
-| Board jitters at rest | Probe radius too small or damping too low | Increase `Ground Probe Radius` / `Suspension Damping` |
-| Turns feel sluggish | `Turning Rate` or `Orientation Lerp Speed` too low | Increase gradually (consider `Lean Response` as well) |
+| Pushes rarely trigger | `Grounded Buffer` too small or ride height too high | Increase `Grounded Buffer` or lower `Ride Height` |
+| Board feels floaty | `Suspension Strength` too low | Raise `Suspension Strength` and `Suspension Damping` |
+| Board jitters at rest | Probe radius or damping too low | Increase `Ground Probe Radius` and/or `Suspension Damping` |
+| Carves feel sluggish | Turning parameters too low | Increase `Turning Rate` or `Orientation Lerp Speed` |
+| Pumping has no impact | Pump value too low or board not grounded | Raise `Pump Acceleration` and confirm ground layers |
 
-## Future Work
+## Roadmap Ideas
+- Pop and landing detection with a full trick state machine.
+- Skater animation layer (foot pushes, grabs, board flips).
+- Surface specific tuning for rails, bowls, or rough ground.
+- Scoring systems, challenges, and session recording.
+- Camera suite with follow cams, replays, and cinematic tools.
 
-- Integrate trick logic (pop detection, spin accounting, trick state machine).
-- Layer character animation on top of the hover rig.
-- Add terrain-aware friction and downhill acceleration.
-
-Keep this README updated as systems evolve so both code and documentation stay aligned.
+Keep iterating on both the implementation and this documentation so the project never drifts toward spaghetti code.
