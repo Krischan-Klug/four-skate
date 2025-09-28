@@ -789,13 +789,11 @@ MonoBehaviour:
   leanAngle: 9
   leanResponse: 12
   tailPivotLocal: {x: 0, y: 0, z: -0.45}
-  pushImpulse: 3.75
-  pushCooldown: 0.45
-  maxPushSpeed: 6.5
-  maxRollSpeed: 14
-  pumpAcceleration: 24
-  brakingDrag: 6
-  rollingResistance: 1.1
+  pushImpulse: 4.5
+  pushCooldown: 0.5
+  maxPushSpeed: 9
+  maxRollSpeed: 18
+  rollingResistance: 0.2
   lateralGrip: 35
   gravityMultiplier: 1.15
   airDrag: 0.2

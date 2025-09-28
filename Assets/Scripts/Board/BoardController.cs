@@ -29,18 +29,16 @@ public sealed class BoardController : MonoBehaviour {
     [SerializeField] Vector3 tailPivotLocal = new Vector3(0f, 0f, -0.45f);
 
     [Header("Speed & Push")]
-    [SerializeField] float pushImpulse = 3.75f;
-    [SerializeField] float pushCooldown = 0.45f;
-    [SerializeField] float maxPushSpeed = 6.5f;
-    [SerializeField] float maxRollSpeed = 14f;
-    [SerializeField] float pumpAcceleration = 24f;
-    [SerializeField] float brakingDrag = 6f;
+    [SerializeField] float pushImpulse = 4.5f;
+    [SerializeField] float pushCooldown = 0.5f;
+    [SerializeField] float maxPushSpeed = 9f;
+    [SerializeField] float maxRollSpeed = 18f;
 
     [Header("Friction & Grip")]
-    [SerializeField] float rollingResistance = 1.1f;
+    [SerializeField] float rollingResistance = 0.2f;
     [SerializeField] float lateralGrip = 35f;
 
-    [Header("Gravity & Air")]
+    [Header("Gravity & Air")] 
     [SerializeField] float gravityMultiplier = 1.15f;
     [SerializeField] float airDrag = 0.2f;
 
@@ -320,3 +318,4 @@ public sealed class BoardController : MonoBehaviour {
         pushRequest = false;
     }
 }
+

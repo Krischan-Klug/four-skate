@@ -120,13 +120,13 @@ Update()                            FixedUpdate()
 - `Tail Pivot Local`: Local-space offset used when yawing so the board rotates around the rear truck instead of its centre.
 
 ### Speed And Push
-- `Push Impulse`: Velocity change applied when a push is consumed.
-- `Push Cooldown`: Minimum time between pushes to avoid spam.
-- `Max Push Speed`: Speed threshold that reduces push strength as you approach it.
-- `Max Roll Speed`: Hard planar speed cap enforced after forces are applied.
+- `Push Impulse`: Velocity change per push (tuned so roughly four pushes reach cruising speed).
+- `Push Cooldown`: Minimum delay between pushes so the cadence feels human.
+- `Max Push Speed`: Target cruising speed (~9 m/s) approached as pushes lose strength.
+- `Max Roll Speed`: Hard planar cap (~18 m/s) that still leaves room for downhill acceleration.
 
 ### Friction And Grip
-- `Rolling Resistance`: Baseline slowdown applied whenever the board is grounded.
+- `Rolling Resistance`: Baseline slowdown while grounded (lower values mean longer coasts).
 - `Lateral Grip`: Strength of the force that cancels sideways drift while carving.
 
 ### Gravity And Air
