@@ -43,16 +43,15 @@ public sealed class SkateDebugHUD : MonoBehaviour {
             return;
 
         sb.Clear();
-        sb.AppendLine($"Grounded: {board.IsGrounded}");
-        sb.AppendLine($"In Air: {board.InAir}");
-        sb.AppendLine($"Air Time: {board.AirTime:F2}s");
+        sb.AppendLine($"Grounded: {board.IsGrounded} (contact: {board.HasGroundContact})");
+        sb.AppendLine($"Ground Distance: {board.GroundDistance:F3} m");
         sb.AppendLine($"Speed: {board.Speed:F2} m/s");
-        sb.AppendLine($"Pop Ready: {board.PopReady}");
-        sb.AppendLine($"Push Queued: {board.PushQueued}");
-        sb.AppendLine($"Queued Trick: {board.CurrentQueuedTrick}");
+        sb.AppendLine($"Air Time: {board.AirTime:F2}s");
+        sb.AppendLine($"Push Ready: {board.PushReady} (cd {board.PushCooldownRemaining:F2}s)");
+        var last = board.LastTrick;
+        sb.AppendLine(last.id == TrickId.None ? "Last Trick: None" : $"Last Trick: {last.id} (nollie {last.nollie})");
         sb.AppendLine($"Velocity: {board.Velocity}");
         sb.AppendLine($"Ground Normal: {board.GroundNormal}");
-
         infoText.text = sb.ToString();
     }
 }

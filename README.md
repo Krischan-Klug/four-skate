@@ -134,8 +134,6 @@ Update()                            FixedUpdate()
 - `Gravity Multiplier`: Scales world gravity to make airborne phases heavier or lighter.
 - `Air Drag`: Damping applied to velocity while the board is off the ground.
 
-### Aerial Requirements
-- `Min Pop Speed`: Minimum planar speed required before the controller reports `PopReady`.
 
 ## Development Guidelines
 - Keep new features modular; prefer companion components or event subscribers over expanding `BoardController` with unrelated logic.

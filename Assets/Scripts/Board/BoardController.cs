@@ -43,9 +43,6 @@ public sealed class BoardController : MonoBehaviour {
     [SerializeField] float gravityMultiplier = 1.15f;
     [SerializeField] float airDrag = 0.2f;
 
-    [Header("Aerial Requirements")]
-    [SerializeField] float minPopSpeed = 1.5f;
-
     FlickItRecognizer recognizer;
     TrickEvent lastTrick;
     float timeSinceLastTrick;
@@ -76,7 +73,10 @@ public sealed class BoardController : MonoBehaviour {
     public float AirTime => airTime;
     public float Speed => speed;
     public bool PushQueued => pushQueued;
-    public bool PopReady => isGrounded && speed >= minPopSpeed;
+    public bool PushReady => isGrounded && (Time.time - lastPushTime) >= pushCooldown && speed < maxRollSpeed;
+    public float PushCooldownRemaining => Mathf.Max(0f, pushCooldown - (Time.time - lastPushTime));
+    public bool HasGroundContact => hasGroundContact;
+    public float GroundDistance => groundDistance;
     public TrickId CurrentQueuedTrick => lastTrick.id;
     public Vector3 GroundNormal => groundNormal;
     public Vector3 Velocity => velocity;
@@ -275,8 +275,10 @@ public sealed class BoardController : MonoBehaviour {
                 }
             }
             pushRequest = false;
+            pushQueued = false;
         } else if (!hasGroundContact) {
             pushRequest = false;
+            pushQueued = false;
         }
 
         float pump = Mathf.Clamp(moveInput.y, -1f, 1f);
@@ -324,5 +326,7 @@ public sealed class BoardController : MonoBehaviour {
         pushRequest = false;
     }
 }
+
+
 
 
