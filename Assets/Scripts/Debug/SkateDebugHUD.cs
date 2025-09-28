@@ -45,7 +45,8 @@ public sealed class SkateDebugHUD : MonoBehaviour {
         sb.Clear();
         sb.AppendLine($"Grounded: {board.IsGrounded} (contact: {board.HasGroundContact})");
         sb.AppendLine($"Ground Distance: {board.GroundDistance:F3} m");
-        sb.AppendLine($"Speed: {board.Speed:F2} m/s");
+        sb.AppendLine($"Speed (planar): {board.PlanarSpeed:F2} m/s");
+        sb.AppendLine($"Speed (actual): {board.ActualSpeed:F2} m/s");
         sb.AppendLine($"Air Time: {board.AirTime:F2}s");
         sb.AppendLine($"Push Ready: {board.PushReady} (cd {board.PushCooldownRemaining:F2}s)");
         var last = board.LastTrick;

@@ -71,7 +71,7 @@ public sealed class BoardController : MonoBehaviour {
     public bool IsGrounded => isGrounded;
     public bool InAir => !isGrounded;
     public float AirTime => airTime;
-    public float Speed => speed;
+    public float PlanarSpeed => speed;
     public bool PushQueued => pushQueued;
     public bool PushReady => isGrounded && (Time.time - lastPushTime) >= pushCooldown && speed < maxRollSpeed;
     public float PushCooldownRemaining => Mathf.Max(0f, pushCooldown - (Time.time - lastPushTime));
@@ -80,6 +80,7 @@ public sealed class BoardController : MonoBehaviour {
     public TrickId CurrentQueuedTrick => lastTrick.id;
     public Vector3 GroundNormal => groundNormal;
     public Vector3 Velocity => velocity;
+    public float ActualSpeed => velocity.magnitude;
 
     public TrickEvent LastTrick => lastTrick;
     public float TimeSinceLastTrick => timeSinceLastTrick;
