@@ -61,6 +61,11 @@ public sealed class BoardController : MonoBehaviour {
     float airTime;
     Vector3 velocity;
     float speed;
+    bool trickPoseActive;
+    Quaternion trickRotationOffset = Quaternion.identity;
+    Vector3 trickPositionOffset = Vector3.zero;
+    bool allowTrickPositionOffset;
+    Vector3 visualBasePosition;
 
     public Vector2 MoveInput => moveInput;
     public Vector2 TrickInput => input ? input.TrickRS : Vector2.zero;
@@ -71,6 +76,10 @@ public sealed class BoardController : MonoBehaviour {
     public bool IsGrounded => isGrounded;
     public bool InAir => !isGrounded;
     public float AirTime => airTime;
+    public Transform BoardVisualRoot => boardVisualRoot;
+    public Rigidbody BoardBody => boardBody;
+    public Quaternion VisualBaseRotation => visualBaseRotation;
+    public bool TrickPoseActive => trickPoseActive;
     public float PlanarSpeed => speed;
     public bool PushQueued => pushQueued;
     public bool PushReady => isGrounded && (Time.time - lastPushTime) >= pushCooldown && speed < maxRollSpeed;
@@ -97,7 +106,13 @@ public sealed class BoardController : MonoBehaviour {
         if (!boardVisualRoot)
             boardVisualRoot = transform;
 
+        allowTrickPositionOffset = boardVisualRoot != null && boardVisualRoot != transform;
+
         visualBaseRotation = boardVisualRoot.localRotation;
+        visualBasePosition = boardVisualRoot.localPosition;
+        trickRotationOffset = Quaternion.identity;
+        trickPositionOffset = Vector3.zero;
+        trickPoseActive = false;
 
         if (flickSettings)
             recognizer = new FlickItRecognizer(flickSettings);
@@ -107,15 +122,24 @@ public sealed class BoardController : MonoBehaviour {
         if (boardBody) {
             boardBody.interpolation = RigidbodyInterpolation.Interpolate;
             boardBody.useGravity = true;
+            boardBody.constraints |= RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
     }
 
     void OnValidate() {
         if (!boardVisualRoot)
             boardVisualRoot = transform;
+
+        allowTrickPositionOffset = boardVisualRoot != null && boardVisualRoot != transform;
+
+        if (boardVisualRoot) {
+            visualBaseRotation = boardVisualRoot.localRotation;
+            visualBasePosition = boardVisualRoot.localPosition;
+        }
     }
 
     void Update() {
+
         float dt = Time.deltaTime;
         timeSinceLastTrick += dt;
         moveInput = input ? Vector2.ClampMagnitude(input.MoveLS, 1f) : Vector2.zero;
@@ -133,9 +157,12 @@ public sealed class BoardController : MonoBehaviour {
             Debug.Log($"[Board] Flick recognized {trick} nollie={nollie}", this);
         }
 
-        if (PushPressed) {
+        if (PushPressed && hasGroundContact) {
             pushQueued = true;
             pushRequest = true;
+        } else if (!hasGroundContact) {
+            pushQueued = false;
+            pushRequest = false;
         }
     }
 
@@ -206,15 +233,19 @@ public sealed class BoardController : MonoBehaviour {
         if (!boardBody)
             return;
 
+        if (trickPoseActive)
+            return;
+
         float steer = Mathf.Clamp(moveInput.x, -1f, 1f);
 
         if (hasGroundContact) {
             Quaternion currentRotation = boardBody.rotation;
             Quaternion desiredRotation = currentRotation;
-            Quaternion yawDelta = Quaternion.identity;
+
+            Vector3 planarVelocity = Vector3.ProjectOnPlane(boardBody.linearVelocity, groundNormal);
 
             if (Mathf.Abs(steer) > 0.001f) {
-                yawDelta = Quaternion.AngleAxis(steer * turningRate * dt, groundNormal);
+                Quaternion yawDelta = Quaternion.AngleAxis(steer * turningRate * dt, groundNormal);
                 desiredRotation = yawDelta * desiredRotation;
 
                 if (tailPivotLocal.sqrMagnitude > 1e-6f) {
@@ -225,32 +256,35 @@ public sealed class BoardController : MonoBehaviour {
                 }
             }
 
-            Vector3 forward = Vector3.ProjectOnPlane(desiredRotation * Vector3.forward, groundNormal);
-            if (forward.sqrMagnitude < 1e-4f)
-                forward = Vector3.ProjectOnPlane(boardBody.linearVelocity, groundNormal);
-
-            if (forward.sqrMagnitude > 1e-4f) {
-                Quaternion align = Quaternion.LookRotation(forward.normalized, groundNormal);
-                float t = DampedLerp(orientationLerpSpeed, dt);
-                desiredRotation = Quaternion.Slerp(desiredRotation, align, t);
+            if (planarVelocity.sqrMagnitude > 0.01f) {
+                Vector3 forward = Vector3.ProjectOnPlane(desiredRotation * Vector3.forward, groundNormal);
+                if (forward.sqrMagnitude > 1e-4f) {
+                    forward.Normalize();
+                    Quaternion align = Quaternion.LookRotation(forward, groundNormal);
+                    float alignWeight = DampedLerp(orientationLerpSpeed, dt);
+                    desiredRotation = Quaternion.Slerp(desiredRotation, align, alignWeight);
+                }
             }
 
-            boardBody.MoveRotation(desiredRotation);
+            Quaternion finalRotation = Quaternion.Slerp(currentRotation, desiredRotation, Mathf.Clamp01(dt * orientationLerpSpeed));
+            boardBody.MoveRotation(finalRotation);
 
-            Vector3 planarVelocity = Vector3.ProjectOnPlane(boardBody.linearVelocity, groundNormal);
-            Vector3 forwardProjected = Vector3.ProjectOnPlane(boardBody.transform.forward, groundNormal);
-            if (forwardProjected.sqrMagnitude > 1e-4f && planarVelocity.sqrMagnitude > 0f) {
-                forwardProjected.Normalize();
-                float forwardSpeed = Vector3.Dot(planarVelocity, forwardProjected);
-                Vector3 forwardVelocity = forwardProjected * forwardSpeed;
-                Vector3 lateralVelocity = planarVelocity - forwardVelocity;
-                boardBody.AddForce(-lateralVelocity * lateralGrip, ForceMode.Acceleration);
+            if (planarVelocity.sqrMagnitude > 0f) {
+                Vector3 forwardProjected = Vector3.ProjectOnPlane(boardBody.transform.forward, groundNormal);
+                if (forwardProjected.sqrMagnitude > 1e-4f) {
+                    forwardProjected.Normalize();
+                    float forwardSpeed = Vector3.Dot(planarVelocity, forwardProjected);
+                    Vector3 forwardVelocity = forwardProjected * forwardSpeed;
+                    Vector3 lateralVelocity = planarVelocity - forwardVelocity;
+                    boardBody.AddForce(-lateralVelocity * lateralGrip, ForceMode.Acceleration);
+                }
             }
         } else {
             if (Mathf.Abs(steer) > 0.01f)
                 boardBody.AddTorque(Vector3.up * steer * airTurningRate, ForceMode.Acceleration);
         }
     }
+
     void ApplyPropulsion() {
         Vector3 forward = Vector3.ProjectOnPlane(boardBody.transform.forward, groundNormal);
         if (forward.sqrMagnitude < 1e-4f)
@@ -294,6 +328,8 @@ public sealed class BoardController : MonoBehaviour {
     }
 
     void ApplyFriction() {
+        if (!boardBody)
+            return;
         if (!hasGroundContact)
             return;
 
@@ -301,23 +337,66 @@ public sealed class BoardController : MonoBehaviour {
         if (planarVelocity.sqrMagnitude < 0.001f)
             return;
 
-        boardBody.AddForce(-planarVelocity * rollingResistance, ForceMode.Acceleration);
-    }
+        Vector3 forward = Vector3.ProjectOnPlane(boardBody.transform.forward, groundNormal);
+        if (forward.sqrMagnitude > 0.0001f)
+            forward.Normalize();
+        else
+            forward = planarVelocity.normalized;
 
+        float forwardSpeed = Vector3.Dot(planarVelocity, forward);
+        Vector3 forwardVelocity = forward * forwardSpeed;
+        Vector3 resistance = -forwardVelocity * rollingResistance;
+        boardBody.AddForce(resistance, ForceMode.Acceleration);
+    }
     void UpdateLeanVisual(float dt) {
-        if (!boardVisualRoot || boardVisualRoot == transform)
+        if (!boardVisualRoot)
             return;
 
-        float targetLean = -moveInput.x * leanAngle;
-        Quaternion leanRotation = Quaternion.AngleAxis(targetLean, Vector3.forward);
+        if (!trickPoseActive) {
+            visualBaseRotation = boardVisualRoot.localRotation;
+            if (allowTrickPositionOffset)
+                visualBasePosition = boardVisualRoot.localPosition;
+        }
+
+        Quaternion targetRotation = visualBaseRotation;
+        Vector3 targetPosition = allowTrickPositionOffset ? visualBasePosition : boardVisualRoot.localPosition;
+
+        if (trickPoseActive) {
+            targetRotation *= trickRotationOffset;
+            if (allowTrickPositionOffset)
+                targetPosition = visualBasePosition + trickPositionOffset;
+        } else {
+            if (boardVisualRoot == transform)
+                return;
+
+            float targetLean = -moveInput.x * leanAngle;
+            targetRotation *= Quaternion.AngleAxis(targetLean, Vector3.forward);
+        }
+
         float t = DampedLerp(leanResponse, dt);
-        boardVisualRoot.localRotation = Quaternion.Slerp(boardVisualRoot.localRotation, visualBaseRotation * leanRotation, t);
+        boardVisualRoot.localRotation = Quaternion.Slerp(boardVisualRoot.localRotation, targetRotation, t);
+
+        if (allowTrickPositionOffset)
+            boardVisualRoot.localPosition = Vector3.Lerp(boardVisualRoot.localPosition, targetPosition, t);
     }
 
-    void UpdateKinematicState() {
+    void UpdateKinematicState()
+    {
         velocity = boardBody.linearVelocity;
         Vector3 planarVelocity = Vector3.ProjectOnPlane(velocity, groundNormal);
         speed = planarVelocity.magnitude;
+    }
+
+    public void ApplyTrickPose(Quaternion rotationOffset, Vector3 positionOffset) {
+        trickPoseActive = true;
+        trickRotationOffset = rotationOffset;
+        trickPositionOffset = allowTrickPositionOffset ? positionOffset : Vector3.zero;
+    }
+
+    public void ClearTrickPose() {
+        trickPoseActive = false;
+        trickRotationOffset = Quaternion.identity;
+        trickPositionOffset = Vector3.zero;
     }
 
     static float DampedLerp(float speed, float dt) => 1f - Mathf.Exp(-Mathf.Max(speed, 0f) * dt);
@@ -327,7 +406,3 @@ public sealed class BoardController : MonoBehaviour {
         pushRequest = false;
     }
 }
-
-
-
-
